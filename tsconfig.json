@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "sourceMap": true,
+    "module": "CommonJs"
+  },
+  "exclude": [
+    "node_modules",
+    "phaser.d.ts",
+    "build",
+    "scripts",
+    "acceptance-tests",
+    "webpack",
+    "jest",
+    "raw",
+    "src/setupTests.ts"
+  ]
+}
