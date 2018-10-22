@@ -61172,6 +61172,8 @@ declare namespace Phaser {
          */
         matter: Phaser.Physics.Matter.MatterPhysics;
 
+        matterCollision: ScenePlugin;
+
         /**
          * Should be overridden by your own Scenes.
          * @param time The current time. Either a High Resolution Timer value if it comes from Request Animation Frame, or Date.now if using SetTimeout.
@@ -70913,6 +70915,8 @@ declare namespace MatterJS {
      * Factories for commonly used body configurations (such as rectangles, circles and other polygons) can be found in the module `Matter.Bodies`.
      */
     class Body {
+        force: {x: number, y: number}
+        velocity: {x: number, y: number}
     }
 
     /**

@@ -32,6 +32,7 @@
   "dependencies": {
     "@types/lodash": "^4.14.117",
     "lodash": "^4.17.11",
-    "phaser": "^3.14.0"
+    "phaser": "^3.14.0",
+    "phaser-matter-collision-plugin": "^0.10.0"
   }
 }
