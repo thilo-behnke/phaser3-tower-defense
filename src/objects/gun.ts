@@ -1,4 +1,4 @@
-import { default as GameScene } from '../scenes/GameScene';
+import { CollisionGroup, default as GameScene } from '../scenes/GameScene';
 import { Enemy } from './enemyList';
 
 export default class Gun {
@@ -11,6 +11,7 @@ export default class Gun {
         this.sprite = this.scene.matter.add
             .sprite(v.x + tv.tileWidth / 2, v.y + tv.tileHeight / 2, 'gun-red', 0, {isStatic: true})
             .setAngle(90)
+        this.sprite.setCollisionGroup(CollisionGroup.BULLET)
     }
 
     static create(scene, v, tv) {

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.0" tiledversion="1.1.0" orientation="orthogonal" renderorder="right-down" width="10" height="30" tilewidth="32" tileheight="32" infinite="0" nextobjectid="10">
+<map version="1.0" tiledversion="1.1.6" orientation="orthogonal" renderorder="right-down" width="10" height="30" tilewidth="32" tileheight="32" infinite="0" nextobjectid="10">
  <tileset firstgid="1" name="tower_defense3" tilewidth="32" tileheight="32" tilecount="299" columns="23">
   <image source="../assets/towerDefense_tilesheet@2_res.png" width="736" height="416"/>
   <tile id="0">

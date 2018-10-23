@@ -15226,7 +15226,7 @@ declare namespace Phaser {
             /**
              * If this Game Object is enabled for physics then this property will contain a reference to a Physics Body.
              */
-            body: object | Phaser.Physics.Arcade.Body | Phaser.Physics.Impact.Body;
+            body: object | Phaser.Physics.Arcade.Body | Phaser.Physics.Impact.Body | MatterJS.Body;
 
             /**
              * This Game Object will ignore all calls made to its destroy method if this flag is set to `true`.
@@ -70917,7 +70917,10 @@ declare namespace MatterJS {
     class Body {
         force: {x: number, y: number}
         velocity: {x: number, y: number}
+        collisionFilter: {group?: number, category?: number, mask?: number}
     }
+    
+    class Bodies {}
 
     /**
      * The `Matter.Composite` module contains methods for creating and manipulating composite bodies.
@@ -70936,6 +70939,7 @@ declare namespace MatterJS {
      * There are also a few methods here that alias those in `Matter.Composite` for easier readability.
      */
     class World extends MatterJS.Composite {
+        bodies: MatterJS.Body[]
     }
 
     /**
