@@ -1,21 +1,20 @@
 import { Scene } from 'phaser';
 import { flatten, head, isEmpty, range, tail } from 'lodash';
 import * as tilesetImg from '../../assets/towerDefense_tilesheet@2_res.png'
-import * as levelFile1 from '../../assets/maps/level1.json'
 import * as levelFile2 from '../../assets/maps/level2.json'
 import * as greenKnightImg from '../../assets/green-knight.png'
 import * as redGunImg from '../../assets/gun-red.png'
 import Knight from '../objects/knight';
+import Gun from '../objects/gun';
+import EnemyList, { Enemy } from '../objects/enemyList';
+import SmallBullet, { Bullet } from '../objects/Bullet';
 import GameObject = Phaser.GameObjects.GameObject;
 import Graphics = Phaser.GameObjects.Graphics;
 import Vector2 = Phaser.Math.Vector2;
 import Tilemap = Phaser.Tilemaps.Tilemap;
 import StaticTilemapLayer = Phaser.Tilemaps.StaticTilemapLayer;
 import ObjectLayer = Phaser.Tilemaps.ObjectLayer;
-import Gun from '../objects/gun';
-import EnemyList from '../objects/enemyList';
 import Sprite = Phaser.Physics.Matter.Sprite;
-import SmallBullet, { Bullet } from '../objects/Bullet';
 
 export type GameTile = Phaser.Tilemaps.Tile & { properties: { collides: boolean, mount: boolean } }
 export type InstalledGun = { sprite: Gun, tile: { x: number, y: number } }
@@ -32,6 +31,7 @@ export default class GameScene extends Scene {
 
     private tileMap: Tilemap
     private towerLayer: StaticTilemapLayer
+    private pathLayer: StaticTilemapLayer
     private gunLayer: ObjectLayer
     private guns: InstalledGun[]
     private bullets: Bullet[]
@@ -103,7 +103,8 @@ export default class GameScene extends Scene {
     spawnKnights() {
         const {x: spawnX, y: spawnY} = this.tileMap.findObject('Spawn', obj => obj.name === 'Spawn Point')
         window.setInterval((a) => {
-            const knights = range(4).map(i => Knight.create(this, {x: spawnX + (-1) ** i * i, y: spawnY}))
+            const knights = range(3)
+                .map(i => Knight.create(this, {x: spawnX + (-1) ** i * i * 20, y: spawnY}))
             knights.forEach(knight => {
                 this.matterCollision.addOnCollideStart({
                     objectA: knight.getSprite(),
@@ -135,7 +136,7 @@ export default class GameScene extends Scene {
         this.tileMap = this.make.tilemap({key: 'map'})
         const tileset = this.tileMap.addTilesetImage('tower_defense3', 'tiles')
         this.towerLayer = this.tileMap.createStaticLayer('Towers', tileset, 0, 0)
-        const pathLayer = this.tileMap.createStaticLayer('Path', tileset, 0, 0)
+        this.pathLayer = this.tileMap.createStaticLayer('Path', tileset, 0, 0)
         const backgroundLayer = this.tileMap.createStaticLayer('Background', tileset, 0, 0)
         this.goal = this.tileMap.findObject('Goal', obj => obj.name === 'Goal Area')
         this.towerLayer.setCollisionByProperty({collides: true})
@@ -144,7 +145,7 @@ export default class GameScene extends Scene {
         matterTowerLayer.localWorld.bodies.forEach(body => {
             body.collisionFilter = {...body.collisionFilter, group: CollisionGroup.BULLET}
         })
-        this.matter.world.convertTilemapLayer(pathLayer)
+        // this.matter.world.convertTilemapLayer(pathLayer)
         this.matter.world.setBounds(0, 0, this.tileMap.widthInPixels, this.tileMap.heightInPixels);
 
         this.anims.create({
@@ -189,6 +190,15 @@ export default class GameScene extends Scene {
             }
         }
 
+    }
+
+    hasReachedGoal(e: Enemy) {
+        const {x, y} = this.tileMap.worldToTileXY(this.goal.x, this.goal.y)
+        const goalTile = this.pathLayer.getTileAt(x, y)
+        const {x: eX, y: eY} = e.getXY()
+        // TODO: Is null - why?
+        const enemyTile = this.pathLayer.getTileAt(eX, eY)
+        return goalTile === enemyTile
     }
 
     restartGame() {

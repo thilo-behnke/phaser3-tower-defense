@@ -6,7 +6,9 @@ export interface Enemy {
     getSprite: () => Sprite
     getHit: () => void
     isDead: () => boolean
+    hasReachedEnd: () => boolean
     destroy: () => void
+    update: () => void
 }
 
 export interface List<T> {
@@ -44,6 +46,7 @@ export default class enemyList implements List<Enemy> {
     }
 
     update() {
+        this.list.forEach(e => e.update())
         const [dead, alive] = partition(this.list, e => e.isDead())
         dead.forEach(e => e.destroy())
         this.list = alive

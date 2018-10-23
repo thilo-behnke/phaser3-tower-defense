@@ -5,6 +5,7 @@ export default class Gun {
     private scene: GameScene
     private sprite: Phaser.Physics.Matter.Sprite
     private aimingAt: Enemy
+    private coolDown: number
 
     constructor(scene, v, tv) {
         this.scene = scene
@@ -12,6 +13,7 @@ export default class Gun {
             .sprite(v.x + tv.tileWidth / 2, v.y + tv.tileHeight / 2, 'gun-red', 0, {isStatic: true})
             .setAngle(90)
         this.sprite.setCollisionGroup(CollisionGroup.BULLET)
+        this.coolDown = 10
     }
 
     static create(scene, v, tv) {
@@ -20,6 +22,7 @@ export default class Gun {
 
     update() {
         this.aimingAt = this.scene.getNearestKnight({x: this.sprite.x, y: this.sprite.y})
+        this.coolDown -= 1
         if (this.aimingAt) {
             const {x, y} = this.aimingAt.getXY()
             const v = {x: x - this.sprite.x, y: this.sprite.y - y}
@@ -31,8 +34,12 @@ export default class Gun {
             } else {
                 this.sprite.setAngle(angle - 90)
             }
-            this.scene.spawnBullet({x: this.sprite.x, y: this.sprite.y}, {dirX: normV.x, dirY: normV.y})
+            if(this.coolDown <= 0){
+                this.scene.spawnBullet({x: this.sprite.x, y: this.sprite.y}, {dirX: normV.x, dirY: normV.y})
+                this.coolDown = 10
+            }
         }
+
     }
 
 }

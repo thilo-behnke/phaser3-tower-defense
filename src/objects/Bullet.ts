@@ -15,7 +15,7 @@ export default class SmallBullet implements Bullet {
         this.scene = scene
         const sprite = this.scene.matter.add
             .sprite(x, y, 'none')
-            .setScale(0.10, 0.10)
+            .setScale(0.20, 0.20)
             .setVelocity(dirX * 30, -dirY * 30) as Sprite
         sprite.setCollisionGroup(CollisionGroup.BULLET)
         this.sprite = sprite
