@@ -6,7 +6,7 @@ const config = {
     type: AUTO,
     parent: 'game',
     width: 320,
-    height: 320,
+    height: 960,
     pixelArt: true,
     scene: GameScene,
     transparent: true,

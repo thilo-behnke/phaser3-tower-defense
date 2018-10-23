@@ -1,7 +1,8 @@
 import { Scene } from "phaser";
-import { head, range, tail } from 'lodash';
+import { head, isEmpty, range, tail } from 'lodash';
 import * as tilesetImg from '../../assets/towerDefense_tilesheet@2_res.png'
 import * as levelFile1 from '../../assets/maps/level1.json'
+import * as levelFile2 from '../../assets/maps/level2.json'
 import * as greenKnightImg from '../../assets/green-knight.png'
 import * as redGunImg from '../../assets/gun-red.png'
 import Knight from '../objects/knight';
@@ -11,15 +12,15 @@ import Vector2 = Phaser.Math.Vector2;
 import Tilemap = Phaser.Tilemaps.Tilemap;
 import StaticTilemapLayer = Phaser.Tilemaps.StaticTilemapLayer;
 import ObjectLayer = Phaser.Tilemaps.ObjectLayer;
-import Sprite = Phaser.Physics.Matter.Sprite;
 import Gun from '../objects/gun';
+import EnemyList from '../objects/enemyList';
 
 export type GameTile = Phaser.Tilemaps.Tile & { properties: { collides: boolean, mount: boolean } }
 export type InstalledGun = { sprite: Gun, tile: { x: number, y: number } }
 
 export default class GameScene extends Scene {
 
-    private knights: Knight[]
+    private enemies: EnemyList
     private goal: GameObject
     private marker: Graphics
 
@@ -38,7 +39,7 @@ export default class GameScene extends Scene {
             // margin: 2,
             // spacing: 2
         })
-        this.load.tilemapTiledJSON("map", levelFile1);
+        this.load.tilemapTiledJSON("map", levelFile2);
         this.guns = []
         this.bullets = []
     }
@@ -52,13 +53,16 @@ export default class GameScene extends Scene {
     }
 
     getNearestKnight({x: tileX, y: tileY}) {
-        return this.knights.reduce((acc, knight) => {
+        const [h, ...tail] = this.enemies
+        return isEmpty(tail)
+            ? h
+            : tail.reduce((acc, knight) => {
             const {x: pX, y: pY} = acc.getXY()
             const {x, y} = knight.getXY()
             const pD = Math.sqrt((tileX - pX) ** 2 + (tileY - pY) ** 2)
             const d = Math.sqrt((tileX - x) ** 2 + (tileY - y) ** 2)
             return d < pD ? knight : acc
-        })
+        }, h)
     }
 
     spawnBullet({x, y}, {dirX, dirY}) {
@@ -90,6 +94,25 @@ export default class GameScene extends Scene {
         // })
     }
 
+    spawnKnights(){
+        const {x: spawnX, y: spawnY} = this.tileMap.findObject("Spawn", obj => obj.name === "Spawn Point")
+        window.setInterval((a) => {
+            const knights = range(4).map(i => Knight.create(this, {x: spawnX + (-1) ** i * i, y: spawnY}))
+            knights.forEach(knight => {
+                this.matterCollision.addOnCollideStart({
+                    objectA: knight.getSprite(),
+                    context: this,
+                    callback: ({gameObjectB}) => {
+                        console.log(gameObjectB)
+                        knight.getHit()
+                    }
+                })
+            })
+            this.enemies.add(knights)
+        }, 1000)
+
+    }
+
     create() {
 
         this.tileMap = this.make.tilemap({key: 'map'})
@@ -98,7 +121,6 @@ export default class GameScene extends Scene {
         // this.gunLayer = this.tileMap.createDynamicLayer('Guns', tileset, 0, 0)
         const pathLayer = this.tileMap.createStaticLayer('Path', tileset, 0, 0)
         const backgroundLayer = this.tileMap.createStaticLayer('Background', tileset, 0, 0)
-        const {x: spawnX, y: spawnY} = this.tileMap.findObject("Spawn", obj => obj.name === "Spawn Point")
         this.goal = this.tileMap.findObject("Goal", obj => obj.name === "Goal Area")
 
         this.matter.world.convertTilemapLayer(this.towerLayer)
@@ -114,45 +136,19 @@ export default class GameScene extends Scene {
             repeat: -1
         })
 
-        this.knights = range(3).map(i => Knight.create(this, {x: spawnX + (-1) ** i * i, y: spawnY}))
+        this.enemies = new EnemyList()
+        this.spawnKnights()
 
         this.createMarker()
         this.marker.setPosition(32, 32)
 
         document.getElementById('restart-button').addEventListener('click', this.restartGame.bind(this))
-
-        this.matterCollision.addOnCollideStart({
-            objectA: this.knights.map(k => k.getSprite()),
-            context: this,
-            callback: () => console.log('test')
-        })
     }
 
     update(time, delta) {
         this.guns.forEach(({sprite}) => sprite.update())
-        // this.knights.forEach(knight => {
-        // if(knight.x >= this.goal.x && knight.x <= this.goal.x + this.goal.width && knight.y >= this.goal.y){
-        // alert('You lost!')
-        // this.add
-        //     .text(16, 16, "Arrow keys to scroll\nLeft-click to draw tiles\nShift + left-click to erase", {
-        //         font: "18px monospace",
-        //         fill: "#000000",
-        //         padding: { x: 20, y: 10 },
-        //         backgroundColor: "#ffffff"
-        //     })
-        //     .setScrollFactor(0);
-        // }
-        // const rand = Math.Between(0, 1000)
-        // if (rand > 950) {
-        //     knight.setVelocityX(-1)
-        //     knight.setVelocityY(1)
-        // } else if (rand > 975) {
-        //     knight.setVelocityX(2)
-        //     knight.setVelocityY(1)
-        // } else {
-        //     knight.setVelocityX(0)
-        // }
-        // })
+        this.enemies.update()
+
         // Convert the mouse position to world position within the camera
         const worldPoint = this.input.activePointer.positionToCamera(this.cameras.main) as Vector2;
 
