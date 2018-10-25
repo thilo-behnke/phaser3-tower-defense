@@ -33,7 +33,7 @@ export default abstract class Gun {
         if (this.aimingAt) {
             const {x, y} = this.aimingAt.getXY()
             const {velX, velY} = this.aimingAt.getVelXY()
-            const v = {x: x + velX * 10 - this.sprite.x, y: this.sprite.y - y - velY * 10}
+            const v = {x: x + velX * 5 - this.sprite.x, y: this.sprite.y - y - velY * 5}
             const magn = Math.sqrt(v.x ** 2 + v.y ** 2)
             const normV = {x: v.x / magn, y: v.y / magn}
             const angle = Math.asin(normV.y) * 180 / Math.PI

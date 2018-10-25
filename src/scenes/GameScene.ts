@@ -5,6 +5,17 @@ import * as levelFile2 from '../../assets/maps/level2.json'
 import * as greenKnightImg from '../../assets/green-knight.png'
 import * as machineGunImg from '../../assets/machine_gun.png'
 import * as shotgunImg from '../../assets/shotgun.png'
+// import * as nr0Img from '../../assets/nr_0.png'
+// import * as nr1Img from '../../assets/nr_1.png'
+// import * as nr2Img from '../../assets/nr_2.png'
+// import * as nr3Img from '../../assets/nr_3.png'
+// import * as nr4Img from '../../assets/nr_4.png'
+// import * as nr5Img from '../../assets/nr_5.png'
+// import * as nr6Img from '../../assets/nr_6.png'
+// import * as nr7Img from '../../assets/nr_7.png'
+// import * as nr8Img from '../../assets/nr_8.png'
+// import * as nr9Img from '../../assets/nr_9.png'
+
 import Knight from '../objects/knight';
 import Gun, { MachineGun, ShotGun } from '../objects/gun';
 import { Bullet } from '../objects/Bullet';
@@ -26,12 +37,15 @@ export enum WeaponType {
 
 export type GameTile =
     Phaser.Tilemaps.Tile
-    & { properties: { collides: boolean, mount: boolean, weapon_type: WeaponType } }
+    & { properties: { collides: boolean, mount: boolean, weapon_type: WeaponType, weapon_price: number } }
 export type InstalledGun = { sprite: Gun, tile: { x: number, y: number } }
 
 export enum CollisionGroup {
     BULLET = -1, ENEMY = -2
 }
+
+const nrMap = range(10).reduce((acc, i) => ({...acc, [i]: 277 + i}), {})
+console.log(nrMap)
 
 export default class GameScene extends Scene {
 
@@ -40,7 +54,9 @@ export default class GameScene extends Scene {
     private gameFieldMarker: Graphics
     private menuMarker: Graphics
 
-    private gunManager: { selected: Gun, available: { [key: string]: Gun } }
+    private money: number
+
+    private gunManager: { selected: Gun, selectedPrice: number, available: { [key: string]: Gun } }
 
     private tileMap: Tilemap
     private towerLayer: StaticTilemapLayer
@@ -56,6 +72,15 @@ export default class GameScene extends Scene {
         this.load.image('tiles', tilesetImg)
         this.load.image('machine_gun', machineGunImg)
         this.load.image('shotgun', shotgunImg)
+        // this.load.image('nr_1', nr1Img)
+        // this.load.image('nr_2', nr2Img)
+        // this.load.image('nr_3', nr3Img)
+        // this.load.image('nr_4', nr4Img)
+        // this.load.image('nr_5', nr5Img)
+        // this.load.image('nr_6', nr6Img)
+        // this.load.image('nr_7', nr7Img)
+        // this.load.image('nr_8', nr8Img)
+        // this.load.image('nr_9', nr9Img)
         this.load.spritesheet('green-knight', greenKnightImg, {
             frameWidth: 20,
             frameHeight: 29,
@@ -63,17 +88,28 @@ export default class GameScene extends Scene {
             // spacing: 2
         })
         this.load.tilemapTiledJSON('map', levelFile2);
+        this.money = 1000
         this.guns = []
         this.bulletSubscriptions = []
     }
 
-    private initGunManager() {
+    private initGunManager(defaultSelect) {
         const machineGunProto = MachineGun.create(this, {x: 0, y: 0}, {x: 0, y: 0})
         const shotGunProto = ShotGun.create(this, {x: 0, y: 0}, {x: 0, y: 0})
+        const available = {[WeaponType.MACHINEGUN]: machineGunProto, [WeaponType.SHOTGUN]: shotGunProto}
         this.gunManager = {
-            selected: machineGunProto,
-            available: {[WeaponType.MACHINEGUN]: machineGunProto, [WeaponType.SHOTGUN]: shotGunProto}
+            selected: available[defaultSelect.properties.weapon_type],
+            selectedPrice: defaultSelect.properties.weapon_price,
+            available
         }
+    }
+
+    private updateMoneyDisplay() {
+        const money = ('' + this.money).padStart(4, '0').split('')
+        this.moneyLayer.putTileAt(nrMap[money[0]], 10, 4)
+        this.moneyLayer.putTileAt(nrMap[money[1]], 11, 4)
+        this.moneyLayer.putTileAt(nrMap[money[2]], 12, 4)
+        this.moneyLayer.putTileAt(nrMap[money[3]], 13, 4)
     }
 
     private createGameFieldMarker() {
@@ -162,9 +198,9 @@ export default class GameScene extends Scene {
     spawnKnights() {
         const {x: spawnX, y: spawnY} = this.tileMap.findObject('Spawn', obj => obj.name === 'Spawn Point')
         window.setInterval((a) => {
-        const knights = range(4)
-            .map(i => Knight.create(this, {x: spawnX + (-1) ** i * i * 20, y: spawnY}))
-        this.enemies.add(knights)
+            const knights = range(4)
+                .map(i => Knight.create(this, {x: spawnX + (-1) ** i * i * 20, y: spawnY}))
+            this.enemies.add(knights)
         }, 2000)
 
     }
@@ -173,11 +209,12 @@ export default class GameScene extends Scene {
 
         this.tileMap = this.make.tilemap({key: 'map'})
         const tileset = this.tileMap.addTilesetImage('tower_defense3', 'tiles')
+        const backgroundLayer = this.tileMap.createStaticLayer('Background', tileset, 0, 0)
+
         this.towerLayer = this.tileMap.createStaticLayer('Towers', tileset, 0, 0)
         this.pathLayer = this.tileMap.createStaticLayer('Path', tileset, 0, 0)
         this.weaponSelectLayer = this.tileMap.createDynamicLayer('TowerSelection', tileset, 0, 0)
         this.moneyLayer = this.tileMap.createDynamicLayer('Money', tileset, 0, 0)
-        const backgroundLayer = this.tileMap.createStaticLayer('Background', tileset, 0, 0)
 
         const goalArea = this.tileMap.findObject('Goal', obj => obj.name === 'Goal Area')
 
@@ -185,6 +222,7 @@ export default class GameScene extends Scene {
             x: goalArea.x + i * this.tileMap.tileWidth,
             y: goalArea.y
         })) as Vector2[]
+
         this.towerLayer.setCollisionByProperty({collides: true})
 
         const matterTowerLayer = this.matter.world.convertTilemapLayer(this.towerLayer)
@@ -206,11 +244,11 @@ export default class GameScene extends Scene {
         this.spawnKnights()
 
         this.createMenuMarker()
-        this.menuMarker.setVisible(false)
+        this.menuMarker.setPosition(11 * 32, 32)
         this.createGameFieldMarker()
         this.gameFieldMarker.setPosition(32, 32)
 
-        this.initGunManager()
+        this.initGunManager(this.weaponSelectLayer.getTileAt(11, 1))
 
         document.getElementById('restart-button').addEventListener('click', this.restartGame.bind(this))
 
@@ -222,6 +260,7 @@ export default class GameScene extends Scene {
         this.guns.forEach(({sprite}) => sprite.update())
         this.enemies.update()
         this.bullets.update()
+        this.updateMoneyDisplay()
 
         // Convert the mouse position to world position within the camera
         const worldPoint = this.input.activePointer.positionToCamera(this.cameras.main) as Vector2;
@@ -235,9 +274,12 @@ export default class GameScene extends Scene {
             this.gameFieldMarker.setVisible(true)
             this.gameFieldMarker.setPosition(snappedWorldPoint.x, snappedWorldPoint.y)
             if (this.input.manager.activePointer.isDown) {
-                const gunSprite = this.gunManager.selected.clone(snappedWorldPoint, this.tileMap)
-                const gun = {sprite: gunSprite, tile: tileAt}
-                this.guns = [gun, ...this.guns]
+                if (this.money - this.gunManager.selectedPrice >= 0) {
+                    const gunSprite = this.gunManager.selected.clone(snappedWorldPoint, this.tileMap)
+                    const gun = {sprite: gunSprite, tile: tileAt}
+                    this.guns = [gun, ...this.guns]
+                    this.money -= this.gunManager.selectedPrice
+                }
             }
         }
 
@@ -250,6 +292,7 @@ export default class GameScene extends Scene {
             this.menuMarker.setPosition(snappedWorldPoint.x, snappedWorldPoint.y)
             if (this.input.manager.activePointer.isDown) {
                 this.gunManager.selected = this.gunManager.available[tileAtMenu.properties.weapon_type]
+                this.gunManager.selectedPrice = tileAtMenu.properties.weapon_price
             }
 
         }
@@ -263,7 +306,6 @@ export default class GameScene extends Scene {
             const {x, y} = this.tileMap.worldToTileXY(tileX, tileY)
             const goalTile = this.pathLayer.getTileAt(x, y)
             const {x: eX, y: eY} = this.tileMap.worldToTileXY(e.getXY().x, e.getXY().y)
-            // TODO: Is null - why?
             const enemyTile = this.pathLayer.getTileAt(eX, eY)
             return goalTile === enemyTile
         })
