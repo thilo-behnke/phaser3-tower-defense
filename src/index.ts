@@ -5,7 +5,7 @@ import GameScene from './scenes/GameScene';
 const config = {
     type: AUTO,
     parent: 'game',
-    width: 320,
+    width: 448,
     height: 960,
     pixelArt: true,
     scene: GameScene,

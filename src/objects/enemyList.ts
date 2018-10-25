@@ -3,8 +3,9 @@ import Sprite = Phaser.Physics.Matter.Sprite;
 
 export interface Enemy {
     getXY: () => { x: number, y: number }
+    getVelXY: () => {velX: number, velY: number}
     getSprite: () => Sprite
-    getHit: () => void
+    getHit: (damage: number) => void
     isDead: () => boolean
     hasReachedEnd: () => boolean
     destroy: () => void
@@ -48,7 +49,7 @@ export default class enemyList implements List<Enemy> {
     update() {
         this.list.forEach(e => e.update())
         const [dead, alive] = partition(this.list, e => e.isDead())
-        dead.forEach(e => e.destroy())
+        dead.forEach(e => setTimeout(() => e.destroy(), 300))
         this.list = alive
     }
 }

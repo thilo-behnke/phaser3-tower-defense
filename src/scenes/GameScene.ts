@@ -1,11 +1,12 @@
 import { Scene } from 'phaser';
-import { flatten, head, isEmpty, range, tail } from 'lodash';
+import { flatten, head, isEmpty, range, tail, zip } from 'lodash';
 import * as tilesetImg from '../../assets/towerDefense_tilesheet@2_res.png'
 import * as levelFile2 from '../../assets/maps/level2.json'
 import * as greenKnightImg from '../../assets/green-knight.png'
-import * as redGunImg from '../../assets/gun-red.png'
+import * as machineGunImg from '../../assets/machine_gun.png'
+import * as shotgunImg from '../../assets/shotgun.png'
 import Knight from '../objects/knight';
-import Gun from '../objects/gun';
+import Gun, { MachineGun, ShotGun } from '../objects/gun';
 import EnemyList, { Enemy } from '../objects/enemyList';
 import SmallBullet, { Bullet } from '../objects/Bullet';
 import GameObject = Phaser.GameObjects.GameObject;
@@ -15,8 +16,16 @@ import Tilemap = Phaser.Tilemaps.Tilemap;
 import StaticTilemapLayer = Phaser.Tilemaps.StaticTilemapLayer;
 import ObjectLayer = Phaser.Tilemaps.ObjectLayer;
 import Sprite = Phaser.Physics.Matter.Sprite;
+import { product } from '../utils/array';
+import DynamicTilemapLayer = Phaser.Tilemaps.DynamicTilemapLayer;
 
-export type GameTile = Phaser.Tilemaps.Tile & { properties: { collides: boolean, mount: boolean } }
+export enum WeaponType {
+    SHOTGUN = 'shotgun', MACHINEGUN = 'machine_gun'
+}
+
+export type GameTile =
+    Phaser.Tilemaps.Tile
+    & { properties: { collides: boolean, mount: boolean, weapon_type: WeaponType } }
 export type InstalledGun = { sprite: Gun, tile: { x: number, y: number } }
 
 export enum CollisionGroup {
@@ -27,20 +36,25 @@ export default class GameScene extends Scene {
 
     private enemies: EnemyList
     private goal: GameObject
-    private marker: Graphics
+    private gameFieldMarker: Graphics
+    private menuMarker: Graphics
+
+    private gunManager: {selected: Gun, available: {[key: string]: Gun}}
 
     private tileMap: Tilemap
     private towerLayer: StaticTilemapLayer
     private pathLayer: StaticTilemapLayer
     private gunLayer: ObjectLayer
+    private weaponSelectLayer: DynamicTilemapLayer
     private guns: InstalledGun[]
     private bullets: Bullet[]
 
-    private bulletSubscription: any
+    private bulletSubscriptions: (() => void)[]
 
     preload() {
         this.load.image('tiles', tilesetImg)
-        this.load.image('gun-red', redGunImg)
+        this.load.image('machine_gun', machineGunImg)
+        this.load.image('shotgun', shotgunImg)
         this.load.spritesheet('green-knight', greenKnightImg, {
             frameWidth: 20,
             frameHeight: 29,
@@ -50,14 +64,32 @@ export default class GameScene extends Scene {
         this.load.tilemapTiledJSON('map', levelFile2);
         this.guns = []
         this.bullets = []
+        this.bulletSubscriptions = []
     }
 
-    private createMarker() {
-        this.marker = this.add.graphics();
-        this.marker.lineStyle(5, 0xffffff, 1);
-        this.marker.strokeRect(0, 0, this.tileMap.tileWidth, this.tileMap.tileHeight);
-        this.marker.lineStyle(3, 0xff4f78, 1);
-        this.marker.strokeRect(0, 0, this.tileMap.tileWidth, this.tileMap.tileHeight);
+    private initGunManager(){
+        const machineGunProto = MachineGun.create(this, {x: 0, y: 0}, {x: 0, y: 0})
+        const shotGunProto = ShotGun.create(this, {x: 0, y: 0}, {x: 0, y: 0})
+        this.gunManager = {
+            selected: machineGunProto,
+            available: {[WeaponType.MACHINEGUN]: machineGunProto, [WeaponType.SHOTGUN]: shotGunProto}
+        }
+    }
+
+    private createGameFieldMarker() {
+        this.gameFieldMarker = this.add.graphics();
+        this.gameFieldMarker.lineStyle(5, 0xffffff, 1);
+        this.gameFieldMarker.strokeRect(0, 0, this.tileMap.tileWidth, this.tileMap.tileHeight);
+        this.gameFieldMarker.lineStyle(3, 0xff4f78, 1);
+        this.gameFieldMarker.strokeRect(0, 0, this.tileMap.tileWidth, this.tileMap.tileHeight);
+    }
+
+    private createMenuMarker() {
+        this.menuMarker = this.add.graphics();
+        this.menuMarker.lineStyle(5, 0xffffff, 1);
+        this.menuMarker.strokeRect(0, 0, this.tileMap.tileWidth, this.tileMap.tileHeight);
+        this.menuMarker.lineStyle(3, 0xff4f78, 1);
+        this.menuMarker.strokeRect(0, 0, this.tileMap.tileWidth, this.tileMap.tileHeight);
     }
 
     getNearestKnight({x: tileX, y: tileY}) {
@@ -73,8 +105,34 @@ export default class GameScene extends Scene {
             }, h)
     }
 
-    spawnBullet({x, y}, {dirX, dirY}) {
-        const bullet = SmallBullet.create(this, {x, y}, {dirX, dirY})
+    updateSubscriptions() {
+        this.bulletSubscriptions.length > 0 && this.bulletSubscriptions.forEach(s => s())
+        this.bulletSubscriptions = product(this.enemies, this.bullets).map(([knight, bullet]) => {
+            return this.matterCollision.addOnCollideStart({
+                objectA: knight.getSprite(),
+                objectB: bullet.getSprite(),
+                context: this,
+                callback: (collision) => {
+                    const {gameObjectB} = collision
+                    if (!(gameObjectB instanceof Sprite)) {
+
+                    } else {
+                        knight.getHit(bullet.bulletParams.damage)
+                    }
+                }
+            })
+            // this.matterCollision.addOnCollideStart({
+            //     objectA: knight.getSprite(),
+            //     objectB: flatten(this.towerLayer.layer.data),
+            //     callback: (collision) => {
+            //         console.log(collision)
+            //     }
+            // })
+        })
+    }
+
+    spawnBullet(bulletProto, {x, y}, {dirX, dirY}) {
+        const bullet = bulletProto.clone({x, y}, {dirX, dirY})
         this.bullets = [...this.bullets, bullet]
         this.bullets = this.bullets.length > 500 ? ((bs) => {
             const h = head(bs)
@@ -105,27 +163,6 @@ export default class GameScene extends Scene {
         window.setInterval((a) => {
             const knights = range(3)
                 .map(i => Knight.create(this, {x: spawnX + (-1) ** i * i * 20, y: spawnY}))
-            knights.forEach(knight => {
-                this.matterCollision.addOnCollideStart({
-                    objectA: knight.getSprite(),
-                    context: this,
-                    callback: (collision) => {
-                        const {gameObjectB} = collision
-                        if (!(gameObjectB instanceof Sprite)) {
-
-                        } else {
-                            knight.getHit()
-                        }
-                    }
-                })
-                this.matterCollision.addOnCollideStart({
-                    objectA: knight.getSprite(),
-                    objectB: flatten(this.towerLayer.layer.data),
-                    callback: (collision) => {
-                        console.log(collision)
-                    }
-                })
-            })
             this.enemies.add(knights)
         }, 2000)
 
@@ -137,6 +174,7 @@ export default class GameScene extends Scene {
         const tileset = this.tileMap.addTilesetImage('tower_defense3', 'tiles')
         this.towerLayer = this.tileMap.createStaticLayer('Towers', tileset, 0, 0)
         this.pathLayer = this.tileMap.createStaticLayer('Path', tileset, 0, 0)
+        this.weaponSelectLayer = this.tileMap.createDynamicLayer('TowerSelection', tileset, 0, 0)
         const backgroundLayer = this.tileMap.createStaticLayer('Background', tileset, 0, 0)
         this.goal = this.tileMap.findObject('Goal', obj => obj.name === 'Goal Area')
         this.towerLayer.setCollisionByProperty({collides: true})
@@ -158,8 +196,12 @@ export default class GameScene extends Scene {
         this.enemies = new EnemyList()
         this.spawnKnights()
 
-        this.createMarker()
-        this.marker.setPosition(32, 32)
+        this.createMenuMarker()
+        this.menuMarker.setVisible(false)
+        this.createGameFieldMarker()
+        this.gameFieldMarker.setPosition(32, 32)
+
+        this.initGunManager()
 
         document.getElementById('restart-button').addEventListener('click', this.restartGame.bind(this))
 
@@ -168,6 +210,10 @@ export default class GameScene extends Scene {
     }
 
     update(time, delta) {
+        // TODO: Move to wrapper list
+        this.bullets.filter(b => b.hasCollided()).forEach(b => setTimeout(() => b.destroy(), 300))
+        this.bullets = this.bullets.filter(b => !b.hasCollided())
+
         this.guns.forEach(({sprite}) => sprite.update())
         this.enemies.update()
 
@@ -181,14 +227,30 @@ export default class GameScene extends Scene {
 
         if (tileAt && tileAt.properties && tileAt.properties.mount && !this.guns.find(({tile: {x, y}}) => x === pointerTileXY.x && y === pointerTileXY.y)) {
             const snappedWorldPoint = this.towerLayer.tileToWorldXY(pointerTileXY.x, pointerTileXY.y)
-            this.marker.setVisible(true)
-            this.marker.setPosition(snappedWorldPoint.x, snappedWorldPoint.y)
+            this.gameFieldMarker.setVisible(true)
+            this.gameFieldMarker.setPosition(snappedWorldPoint.x, snappedWorldPoint.y)
             if (this.input.manager.activePointer.isDown) {
-                const gunSprite = Gun.create(this, snappedWorldPoint, this.tileMap)
+                console.log(this.gunManager.selected)
+                const gunSprite = this.gunManager.selected.clone(snappedWorldPoint, this.tileMap)
                 const gun = {sprite: gunSprite, tile: tileAt}
                 this.guns = [gun, ...this.guns]
             }
         }
+
+        const pointerTileXYMenu = this.weaponSelectLayer.worldToTileXY(worldPoint.x, worldPoint.y);
+        const tileAtMenu = this.weaponSelectLayer.getTileAt(pointerTileXY.x, pointerTileXY.y) as GameTile
+
+        if (tileAtMenu && tileAtMenu.properties && tileAtMenu.properties.weapon_type) {
+            const snappedWorldPoint = this.weaponSelectLayer.tileToWorldXY(pointerTileXYMenu.x, pointerTileXYMenu.y)
+            this.menuMarker.setVisible(true)
+            this.menuMarker.setPosition(snappedWorldPoint.x, snappedWorldPoint.y)
+            if (this.input.manager.activePointer.isDown) {
+                this.gunManager.selected = this.gunManager.available[tileAtMenu.properties.weapon_type]
+            }
+
+        }
+
+        this.updateSubscriptions()
 
     }
 

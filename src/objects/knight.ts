@@ -1,5 +1,6 @@
 import { Enemy } from './enemyList';
 import { CollisionGroup, default as GameScene } from '../scenes/GameScene';
+import { Bullet } from './Bullet';
 const { Body, Bodies } = Phaser.Physics.Matter.Matter
 
 export default class Knight implements Enemy {
@@ -72,12 +73,20 @@ export default class Knight implements Enemy {
         }
     }
 
+    getVelXY(){
+        const {x, y} = (this.sprite.body as MatterJS.Body).velocity
+        return {
+            velX: x,
+            velY: y
+        }
+    }
+
     getSprite() {
         return this.sprite
     }
 
-    getHit() {
-        this.hp -= 1
+    getHit(damage: number) {
+        this.hp -= damage
     }
 
     isDead() {
