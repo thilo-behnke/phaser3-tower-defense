@@ -1,12 +1,12 @@
-import { Enemy } from './enemyList';
+import { CanDie, Enemy } from './GameObject';
 import { CollisionGroup, default as GameScene } from '../scenes/GameScene';
-import { Bullet } from './Bullet';
-const { Body, Bodies } = Phaser.Physics.Matter.Matter
 
-export default class Knight implements Enemy {
+const {Body, Bodies} = Phaser.Physics.Matter.Matter
+
+export default class Knight implements Enemy, CanDie {
     private scene: GameScene
-    private sensors: {left: any, right: any}
-    private isTouching: {left: boolean, right: boolean}
+    private sensors: { left: any, right: any }
+    private isTouching: { left: boolean, right: boolean }
     private sprite: Phaser.Physics.Matter.Sprite
     private hp: number
 
@@ -14,11 +14,11 @@ export default class Knight implements Enemy {
         this.scene = scene
         this.sprite = this.scene.matter.add
             .sprite(0, 0, 'green-knight', 0)
-        const { width: w, height: h } = this.sprite;
-        const mainBody = Bodies.rectangle(0, 0, w * 0.6, h, { chamfer: { radius: 10 } });
+        const {width: w, height: h} = this.sprite;
+        const mainBody = Bodies.rectangle(0, 0, w * 0.6, h, {chamfer: {radius: 10}});
         this.sensors = {
-            left: Bodies.rectangle(-w * 0.35, 0, 2, h * 0.5, { isSensor: true }),
-            right: Bodies.rectangle(w * 0.35, 0, 2, h * 0.5, { isSensor: true })
+            left: Bodies.rectangle(-w * 0.35, 0, 2, h * 0.5, {isSensor: true}),
+            right: Bodies.rectangle(w * 0.35, 0, 2, h * 0.5, {isSensor: true})
         };
         const compoundBody = Body.create({
             parts: [mainBody, this.sensors.left, this.sensors.right],
@@ -44,11 +44,10 @@ export default class Knight implements Enemy {
 
     update() {
         this.sprite.setVelocityY(4)
-        console.log(this.scene.hasReachedGoal(this))
         // this.sprite.applyForce(new Phaser.Math.Vector2(0.005, 0))
     }
 
-    onSensorCollide({ bodyA, bodyB, pair }) {
+    onSensorCollide({bodyA, bodyB, pair}) {
         // Watch for the player colliding with walls/objects on either side and the ground below, so
         // that we can use that logic inside of update to move the player.
         // Note: we are using the "pair.separation" here. That number tells us how much bodyA and bodyB
@@ -73,7 +72,7 @@ export default class Knight implements Enemy {
         }
     }
 
-    getVelXY(){
+    getVelXY() {
         const {x, y} = (this.sprite.body as MatterJS.Body).velocity
         return {
             velX: x,
@@ -90,14 +89,14 @@ export default class Knight implements Enemy {
     }
 
     isDead() {
-        return this.hp <= 0
+        return this.hp <= 0 || this.scene.hasReachedGoal(this)
     }
 
     destroy() {
         this.sprite.destroy()
     }
 
-    hasReachedEnd(){
+    hasReachedEnd() {
         return true
     }
 }

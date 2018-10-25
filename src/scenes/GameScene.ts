@@ -1,5 +1,5 @@
 import { Scene } from 'phaser';
-import { flatten, head, isEmpty, range, tail, zip } from 'lodash';
+import { isEmpty, range } from 'lodash';
 import * as tilesetImg from '../../assets/towerDefense_tilesheet@2_res.png'
 import * as levelFile2 from '../../assets/maps/level2.json'
 import * as greenKnightImg from '../../assets/green-knight.png'
@@ -7,8 +7,10 @@ import * as machineGunImg from '../../assets/machine_gun.png'
 import * as shotgunImg from '../../assets/shotgun.png'
 import Knight from '../objects/knight';
 import Gun, { MachineGun, ShotGun } from '../objects/gun';
-import EnemyList, { Enemy } from '../objects/enemyList';
-import SmallBullet, { Bullet } from '../objects/Bullet';
+import { Bullet } from '../objects/Bullet';
+import { product } from '../utils/array';
+import { Enemy } from '../objects/GameObject';
+import AutoRemoveList from '../objects/autoRemoveList';
 import GameObject = Phaser.GameObjects.GameObject;
 import Graphics = Phaser.GameObjects.Graphics;
 import Vector2 = Phaser.Math.Vector2;
@@ -16,7 +18,6 @@ import Tilemap = Phaser.Tilemaps.Tilemap;
 import StaticTilemapLayer = Phaser.Tilemaps.StaticTilemapLayer;
 import ObjectLayer = Phaser.Tilemaps.ObjectLayer;
 import Sprite = Phaser.Physics.Matter.Sprite;
-import { product } from '../utils/array';
 import DynamicTilemapLayer = Phaser.Tilemaps.DynamicTilemapLayer;
 
 export enum WeaponType {
@@ -34,20 +35,20 @@ export enum CollisionGroup {
 
 export default class GameScene extends Scene {
 
-    private enemies: EnemyList
-    private goal: GameObject
+    private enemies: AutoRemoveList<Enemy>
+    private goal: Vector2[]
     private gameFieldMarker: Graphics
     private menuMarker: Graphics
 
-    private gunManager: {selected: Gun, available: {[key: string]: Gun}}
+    private gunManager: { selected: Gun, available: { [key: string]: Gun } }
 
     private tileMap: Tilemap
     private towerLayer: StaticTilemapLayer
     private pathLayer: StaticTilemapLayer
-    private gunLayer: ObjectLayer
+    private moneyLayer: DynamicTilemapLayer
     private weaponSelectLayer: DynamicTilemapLayer
     private guns: InstalledGun[]
-    private bullets: Bullet[]
+    private bullets: AutoRemoveList<Bullet>
 
     private bulletSubscriptions: (() => void)[]
 
@@ -63,11 +64,10 @@ export default class GameScene extends Scene {
         })
         this.load.tilemapTiledJSON('map', levelFile2);
         this.guns = []
-        this.bullets = []
         this.bulletSubscriptions = []
     }
 
-    private initGunManager(){
+    private initGunManager() {
         const machineGunProto = MachineGun.create(this, {x: 0, y: 0}, {x: 0, y: 0})
         const shotGunProto = ShotGun.create(this, {x: 0, y: 0}, {x: 0, y: 0})
         this.gunManager = {
@@ -133,12 +133,13 @@ export default class GameScene extends Scene {
 
     spawnBullet(bulletProto, {x, y}, {dirX, dirY}) {
         const bullet = bulletProto.clone({x, y}, {dirX, dirY})
-        this.bullets = [...this.bullets, bullet]
-        this.bullets = this.bullets.length > 500 ? ((bs) => {
-            const h = head(bs)
-            h.destroy()
-            return tail(bs)
-        })(this.bullets) : this.bullets
+        this.bullets.add(bullet)
+        // this.bullets = [...this.bullets, bullet]
+        // this.bullets = this.bullets.length > 500 ? ((bs) => {
+        //     const h = head(bs)
+        //     h.destroy()
+        //     return tail(bs)
+        // })(this.bullets) : this.bullets
         // TODO: Doesn't work - why? Too many subscribers?
         // this.bulletSubscription && this.bulletSubscription()
         // this.matterCollision.addOnCollideStart({
@@ -161,9 +162,9 @@ export default class GameScene extends Scene {
     spawnKnights() {
         const {x: spawnX, y: spawnY} = this.tileMap.findObject('Spawn', obj => obj.name === 'Spawn Point')
         window.setInterval((a) => {
-            const knights = range(3)
-                .map(i => Knight.create(this, {x: spawnX + (-1) ** i * i * 20, y: spawnY}))
-            this.enemies.add(knights)
+        const knights = range(4)
+            .map(i => Knight.create(this, {x: spawnX + (-1) ** i * i * 20, y: spawnY}))
+        this.enemies.add(knights)
         }, 2000)
 
     }
@@ -175,8 +176,15 @@ export default class GameScene extends Scene {
         this.towerLayer = this.tileMap.createStaticLayer('Towers', tileset, 0, 0)
         this.pathLayer = this.tileMap.createStaticLayer('Path', tileset, 0, 0)
         this.weaponSelectLayer = this.tileMap.createDynamicLayer('TowerSelection', tileset, 0, 0)
+        this.moneyLayer = this.tileMap.createDynamicLayer('Money', tileset, 0, 0)
         const backgroundLayer = this.tileMap.createStaticLayer('Background', tileset, 0, 0)
-        this.goal = this.tileMap.findObject('Goal', obj => obj.name === 'Goal Area')
+
+        const goalArea = this.tileMap.findObject('Goal', obj => obj.name === 'Goal Area')
+
+        this.goal = range(goalArea.width / this.tileMap.tileWidth).map(i => ({
+            x: goalArea.x + i * this.tileMap.tileWidth,
+            y: goalArea.y
+        })) as Vector2[]
         this.towerLayer.setCollisionByProperty({collides: true})
 
         const matterTowerLayer = this.matter.world.convertTilemapLayer(this.towerLayer)
@@ -193,7 +201,8 @@ export default class GameScene extends Scene {
             repeat: -1
         })
 
-        this.enemies = new EnemyList()
+        this.enemies = new AutoRemoveList<Enemy>()
+        this.bullets = new AutoRemoveList<Bullet>()
         this.spawnKnights()
 
         this.createMenuMarker()
@@ -210,18 +219,14 @@ export default class GameScene extends Scene {
     }
 
     update(time, delta) {
-        // TODO: Move to wrapper list
-        this.bullets.filter(b => b.hasCollided()).forEach(b => setTimeout(() => b.destroy(), 300))
-        this.bullets = this.bullets.filter(b => !b.hasCollided())
-
         this.guns.forEach(({sprite}) => sprite.update())
         this.enemies.update()
+        this.bullets.update()
 
         // Convert the mouse position to world position within the camera
         const worldPoint = this.input.activePointer.positionToCamera(this.cameras.main) as Vector2;
 
-        // Place the marker in world space, but snap it to the tile grid. If we convert world -> tile and
-        // then tile -> world, we end up with the position of the tile under the pointer
+        // TODO: Refactor markers
         const pointerTileXY = this.towerLayer.worldToTileXY(worldPoint.x, worldPoint.y);
         const tileAt = this.towerLayer.getTileAt(pointerTileXY.x, pointerTileXY.y) as GameTile
 
@@ -230,7 +235,6 @@ export default class GameScene extends Scene {
             this.gameFieldMarker.setVisible(true)
             this.gameFieldMarker.setPosition(snappedWorldPoint.x, snappedWorldPoint.y)
             if (this.input.manager.activePointer.isDown) {
-                console.log(this.gunManager.selected)
                 const gunSprite = this.gunManager.selected.clone(snappedWorldPoint, this.tileMap)
                 const gun = {sprite: gunSprite, tile: tileAt}
                 this.guns = [gun, ...this.guns]
@@ -255,12 +259,14 @@ export default class GameScene extends Scene {
     }
 
     hasReachedGoal(e: Enemy) {
-        const {x, y} = this.tileMap.worldToTileXY(this.goal.x, this.goal.y)
-        const goalTile = this.pathLayer.getTileAt(x, y)
-        const {x: eX, y: eY} = e.getXY()
-        // TODO: Is null - why?
-        const enemyTile = this.pathLayer.getTileAt(eX, eY)
-        return goalTile === enemyTile
+        return this.goal.some(({x: tileX, y: tileY}) => {
+            const {x, y} = this.tileMap.worldToTileXY(tileX, tileY)
+            const goalTile = this.pathLayer.getTileAt(x, y)
+            const {x: eX, y: eY} = this.tileMap.worldToTileXY(e.getXY().x, e.getXY().y)
+            // TODO: Is null - why?
+            const enemyTile = this.pathLayer.getTileAt(eX, eY)
+            return goalTile === enemyTile
+        })
     }
 
     restartGame() {

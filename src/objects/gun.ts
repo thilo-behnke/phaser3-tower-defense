@@ -1,5 +1,5 @@
 import { CollisionGroup, default as GameScene } from '../scenes/GameScene';
-import { Enemy } from './enemyList';
+import { Enemy } from './GameObject';
 import { Bullet, default as SmallBullet } from './Bullet';
 import {range} from 'lodash'
 

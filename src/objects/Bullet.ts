@@ -1,10 +1,10 @@
 import { CollisionGroup } from '../scenes/GameScene';
 import Scene = Phaser.Scene;
 import Sprite = Phaser.Physics.Matter.Sprite;
+import { CanDie } from './GameObject';
 
-export interface Bullet {
+export interface Bullet extends CanDie {
     bulletParams: BulletParams
-    hasCollided: () => boolean
     destroy: () => void
     getSprite: () => Sprite
 }
@@ -53,12 +53,28 @@ export default class SmallBullet implements Bullet {
         return this.sprite
     }
 
-    hasCollided(){
+    getXY(){
+        return {
+            x: this.sprite.x,
+            y: this.sprite.y
+        }
+    }
+
+    getVelXY(){
+        return {
+            velX: (this.sprite.body as MatterJS.Body).velocity.x,
+            velY: (this.sprite.body as MatterJS.Body).velocity.y
+        }
+    }
+
+    isDead(){
         return this.collided
     }
 
     destroy() {
         this.sprite.destroy()
     }
+
+    update(){}
 
 }
