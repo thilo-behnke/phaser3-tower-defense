@@ -1,5 +1,6 @@
 import { CanDie, Enemy } from './GameObject';
 import { CollisionGroup, default as GameScene } from '../scenes/GameScene';
+import Vector2 = Phaser.Math.Vector2;
 
 const {Body, Bodies} = Phaser.Physics.Matter.Matter
 

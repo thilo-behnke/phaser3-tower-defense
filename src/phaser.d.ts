@@ -60508,7 +60508,7 @@ declare namespace Phaser {
                  * [description]
                  * @param value [description]
                  */
-                setBounce(value: number): Phaser.GameObjects.GameObject;
+                setBounce(value: number): this;
 
                 /**
                  * [description]
@@ -60520,7 +60520,7 @@ declare namespace Phaser {
                  * [description]
                  * @param value Unique group index.
                  */
-                setCollisionGroup(value: number): Phaser.GameObjects.GameObject;
+                setCollisionGroup(value: number): this;
 
                 /**
                  * [description]
@@ -60571,7 +60571,7 @@ declare namespace Phaser {
                  * @param air [description]
                  * @param fstatic [description]
                  */
-                setFriction(value: number, air?: number, fstatic?: number): Phaser.GameObjects.GameObject;
+                setFriction(value: number, air?: number, fstatic?: number): this;
 
                 /**
                  * [description]
@@ -60595,7 +60595,7 @@ declare namespace Phaser {
                  * [description]
                  * @param value [description]
                  */
-                setMass(value: number): Phaser.GameObjects.GameObject;
+                setMass(value: number): this;
 
                 /**
                  * [description]
@@ -60729,7 +60729,7 @@ declare namespace Phaser {
                  * @param x [description]
                  * @param y [description] Default x.
                  */
-                setVelocity(x: number, y?: number): Phaser.GameObjects.GameObject;
+                setVelocity(x: number, y?: number): this;
 
             }
 

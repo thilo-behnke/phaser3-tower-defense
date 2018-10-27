@@ -5,7 +5,7 @@ export default interface GameObject {
     getVelXY: () => { velX: number, velY: number }
     getSprite: () => Sprite
     destroy: () => void
-    update: () => void
+    update: (delta: number) => void
 }
 
 export interface CanDie extends GameObject {

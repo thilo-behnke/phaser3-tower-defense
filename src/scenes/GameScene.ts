@@ -1,33 +1,21 @@
 import { Scene } from 'phaser';
-import { isEmpty, range } from 'lodash';
+import { isEmpty, range, take, zip } from 'lodash';
 import * as tilesetImg from '../../assets/towerDefense_tilesheet@2_res.png'
 import * as levelFile2 from '../../assets/maps/level2.json'
 import * as greenKnightImg from '../../assets/green-knight.png'
 import * as machineGunImg from '../../assets/machine_gun.png'
 import * as shotgunImg from '../../assets/shotgun.png'
-// import * as nr0Img from '../../assets/nr_0.png'
-// import * as nr1Img from '../../assets/nr_1.png'
-// import * as nr2Img from '../../assets/nr_2.png'
-// import * as nr3Img from '../../assets/nr_3.png'
-// import * as nr4Img from '../../assets/nr_4.png'
-// import * as nr5Img from '../../assets/nr_5.png'
-// import * as nr6Img from '../../assets/nr_6.png'
-// import * as nr7Img from '../../assets/nr_7.png'
-// import * as nr8Img from '../../assets/nr_8.png'
-// import * as nr9Img from '../../assets/nr_9.png'
-
+import * as smallBulletImg from '../../assets/small_bullet.png'
 import Knight from '../objects/knight';
 import Gun, { MachineGun, ShotGun } from '../objects/gun';
 import { Bullet } from '../objects/Bullet';
 import { product } from '../utils/array';
 import { Enemy } from '../objects/GameObject';
 import AutoRemoveList from '../objects/autoRemoveList';
-import GameObject = Phaser.GameObjects.GameObject;
 import Graphics = Phaser.GameObjects.Graphics;
 import Vector2 = Phaser.Math.Vector2;
 import Tilemap = Phaser.Tilemaps.Tilemap;
 import StaticTilemapLayer = Phaser.Tilemaps.StaticTilemapLayer;
-import ObjectLayer = Phaser.Tilemaps.ObjectLayer;
 import Sprite = Phaser.Physics.Matter.Sprite;
 import DynamicTilemapLayer = Phaser.Tilemaps.DynamicTilemapLayer;
 
@@ -72,6 +60,7 @@ export default class GameScene extends Scene {
         this.load.image('tiles', tilesetImg)
         this.load.image('machine_gun', machineGunImg)
         this.load.image('shotgun', shotgunImg)
+        this.load.image('small_bullet', smallBulletImg)
         // this.load.image('nr_1', nr1Img)
         // this.load.image('nr_2', nr2Img)
         // this.load.image('nr_3', nr3Img)
@@ -106,10 +95,8 @@ export default class GameScene extends Scene {
 
     private updateMoneyDisplay() {
         const money = ('' + this.money).padStart(4, '0').split('')
-        this.moneyLayer.putTileAt(nrMap[money[0]], 10, 4)
-        this.moneyLayer.putTileAt(nrMap[money[1]], 11, 4)
-        this.moneyLayer.putTileAt(nrMap[money[2]], 12, 4)
-        this.moneyLayer.putTileAt(nrMap[money[3]], 13, 4)
+        const amountTiles = take(this.moneyLayer.culledTiles, 4)
+        amountTiles.length === 4 && zip(money, amountTiles).forEach(([m, {x, y}]) => this.moneyLayer.putTileAt(nrMap[m], x, y))
     }
 
     private createGameFieldMarker() {
@@ -152,54 +139,24 @@ export default class GameScene extends Scene {
                     const {gameObjectB} = collision
                     if (!(gameObjectB instanceof Sprite)) {
 
-                    } else {
+                    } else if (!bullet.isDead()){
                         knight.getHit(bullet.bulletParams.damage)
                     }
                 }
             })
-            // this.matterCollision.addOnCollideStart({
-            //     objectA: knight.getSprite(),
-            //     objectB: flatten(this.towerLayer.layer.data),
-            //     callback: (collision) => {
-            //         console.log(collision)
-            //     }
-            // })
         })
     }
 
-    spawnBullet(bulletProto, {x, y}, {dirX, dirY}) {
-        const bullet = bulletProto.clone({x, y}, {dirX, dirY})
+    spawnBullet(bulletProto, {x, y}, {dirX, dirY}, angle) {
+        const bullet = bulletProto.clone({x, y}, {dirX, dirY}, angle)
         this.bullets.add(bullet)
-        // this.bullets = [...this.bullets, bullet]
-        // this.bullets = this.bullets.length > 500 ? ((bs) => {
-        //     const h = head(bs)
-        //     h.destroy()
-        //     return tail(bs)
-        // })(this.bullets) : this.bullets
-        // TODO: Doesn't work - why? Too many subscribers?
-        // this.bulletSubscription && this.bulletSubscription()
-        // this.matterCollision.addOnCollideStart({
-        //     objectA: bullet,
-        //     // objectB: this.enemies.map(k => k.getSprite()),
-        //     context: this,
-        //     callback: (collision) => {
-        //         console.log(collision)
-        //     }
-        // })
-        // this.matterCollision.addOnCollideEnd({
-        //     objectA: bullet,
-        //     objectB: this.knights.map(k => k.getSprite()),
-        //     callback: () => ({gameObjectA, gameObjectB}) => {
-        //         console.log(gameObjectA, gameObjectB)
-        //     }
-        // })
     }
 
     spawnKnights() {
         const {x: spawnX, y: spawnY} = this.tileMap.findObject('Spawn', obj => obj.name === 'Spawn Point')
         window.setInterval((a) => {
-            const knights = range(4)
-                .map(i => Knight.create(this, {x: spawnX + (-1) ** i * i * 20, y: spawnY}))
+            const knights = range(8)
+                .map(i => Knight.create(this, {x: spawnX + (-1) ** i * Math.ceil(i / 2) * 15, y: spawnY + Math.floor(i / 4) * 30}))
             this.enemies.add(knights)
         }, 2000)
 
@@ -229,7 +186,6 @@ export default class GameScene extends Scene {
         matterTowerLayer.localWorld.bodies.forEach(body => {
             body.collisionFilter = {...body.collisionFilter, group: CollisionGroup.BULLET}
         })
-        // this.matter.world.convertTilemapLayer(pathLayer)
         this.matter.world.setBounds(0, 0, this.tileMap.widthInPixels, this.tileMap.heightInPixels);
 
         this.anims.create({
@@ -251,15 +207,12 @@ export default class GameScene extends Scene {
         this.initGunManager(this.weaponSelectLayer.getTileAt(11, 1))
 
         document.getElementById('restart-button').addEventListener('click', this.restartGame.bind(this))
-
-        // this.matter.world.on('collisionstart', console.log)
-        // this.matter.world.on('collisionend', console.log)
     }
 
     update(time, delta) {
-        this.guns.forEach(({sprite}) => sprite.update())
-        this.enemies.update()
-        this.bullets.update()
+        this.guns.forEach(({sprite}) => sprite.update(delta))
+        this.enemies.update(delta)
+        this.bullets.update(delta)
         this.updateMoneyDisplay()
 
         // Convert the mouse position to world position within the camera
