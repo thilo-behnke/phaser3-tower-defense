@@ -1,14 +1,17 @@
 import { CollisionGroup } from '../scenes/GameScene';
-import { CanDie } from './GameObject';
+import { CanDie, Enemy } from './GameObject';
 import Scene = Phaser.Scene;
 import Sprite = Phaser.Physics.Matter.Sprite;
 import Bodies = Phaser.Physics.Matter.Matter.Bodies;
+import Vector2 = Phaser.Math.Vector2;
 
 export interface Bullet extends CanDie {
     bulletParams: BulletParams
     destroy: () => void
     getSprite: () => Sprite
     setAngle: (angle: number) => void
+    clone: (pos, dir, angle) => Bullet
+    onCollide: () => void
 }
 
 export type BulletParams = {
@@ -18,10 +21,10 @@ export type BulletParams = {
     mass: number
 }
 
-export default class RegularBullet implements Bullet {
+export default abstract class RegularBullet implements Bullet {
 
-    private scene: Scene
-    private sprite: Sprite
+    protected scene: Scene
+    protected sprite: Sprite
     private collided: boolean
 
     public bulletParams: BulletParams
@@ -48,13 +51,9 @@ export default class RegularBullet implements Bullet {
         })
     }
 
-    static create(scene, {x, y}, {dirX, dirY}, bulletParams) {
-        return new RegularBullet(scene, {x, y}, {dirX, dirY}, bulletParams)
-    }
-
-    clone(pos, dir, angle) {
-        return RegularBullet.create(this.scene, pos, dir, this.bulletParams)
-            .setAngle(angle)
+    // TODO: No better way to structure hierarchie?
+    clone(pos, dir, angle){
+        return {} as any
     }
 
     getSprite() {
@@ -94,11 +93,71 @@ export default class RegularBullet implements Bullet {
         }
     }
 
+    onCollide(){
+
+    }
+
+}
+
+export class StraightBullet extends RegularBullet {
+    static create(scene, {x, y}, {dirX, dirY}, bulletParams) {
+        return new StraightBullet(scene, {x, y}, {dirX, dirY}, bulletParams)
+    }
+    clone(pos, dir, angle) {
+        return StraightBullet.create(this.scene, pos, dir, this.bulletParams)
+            .setAngle(angle)
+    }
 }
 
 export class TrackingBullet extends RegularBullet {
+
+    target: Enemy
+
+    constructor(scene, {x, y}, {dirX, dirY}, bulletParams){
+        super(scene, {x, y}, {dirX, dirY}, bulletParams)
+    }
+
+    static create(scene, {x, y}, {dirX, dirY}, bulletParams) {
+        return new TrackingBullet(scene, {x, y}, {dirX, dirY}, bulletParams)
+    }
+    clone(pos, dir, angle) {
+        return TrackingBullet.create(this.scene, pos, dir, this.bulletParams)
+            .setAngle(angle)
+    }
+
+    setTarget(target){
+        this.target = target
+        return this
+    }
+
     update(delta){
         super.update(delta)
+        if(this.target.getSprite().body){
+            // TODO: Refactor
+            const {x: targetX, y: targetY} = this.target.getXY()
+            const v = new Vector2(targetX - this.sprite.x, this.sprite.y - targetY)
+            const vNorm = v.normalize()
+            const angle = Math.asin(vNorm.y) * 180 / Math.PI
+            const translatedAngle = vNorm.x > 0
+                ? 90 - angle
+                : angle - 90
+            const angleDiff = this.sprite.angle - translatedAngle
 
+            if (Math.abs(angleDiff) > 10) {
+                const spriteAngle360 = this.sprite.angle < 0 ? 360 + this.sprite.angle : this.sprite.angle
+                const aimingAtAngle360 = translatedAngle < 0 ? 360 + translatedAngle : translatedAngle
+                const dir = aimingAtAngle360 > spriteAngle360
+                    ? (aimingAtAngle360 - spriteAngle360 <= 180 ? 1 : -1)
+                    : (spriteAngle360 - aimingAtAngle360 <= 180 ? -1 : 1)
+                this.sprite.setAngularVelocity(dir / 5)
+                this.sprite.setVelocity(vNorm.x * 10, vNorm.y * 10)
+            } else {
+                this.sprite.setAngularVelocity(0)
+            }
+        }
+    }
+
+    onCollide(){
+        // TODO: Create explosion
     }
 }

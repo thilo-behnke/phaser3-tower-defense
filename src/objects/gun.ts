@@ -1,6 +1,6 @@
 import { CollisionGroup, default as GameScene } from '../scenes/GameScene';
 import { Enemy } from './GameObject';
-import { Bullet, default as RegularBullet } from './Bullet';
+import { Bullet, default as RegularBullet, StraightBullet, TrackingBullet } from './Bullet';
 import { range } from 'lodash'
 import Vector2 = Phaser.Math.Vector2;
 
@@ -10,7 +10,7 @@ export type GunParams = { coolDown: number, sprite: string }
 export default abstract class Gun {
     protected scene: GameScene
     protected sprite: Phaser.Physics.Matter.Sprite
-    private aimingAt: Enemy
+    protected aimingAt: Enemy
     private gunParams: GunParams
     private coolDown: number
     public bulletProto: Bullet
@@ -76,7 +76,6 @@ export default abstract class Gun {
         } else {
             this.sprite.setAngularVelocity(0)
         }
-
     }
 
     getXY() {
@@ -95,7 +94,12 @@ export class MachineGun extends Gun {
 
     constructor(scene, v, tv) {
         super(scene, v, tv, {coolDown: 10, sprite: 'machine_gun'})
-        this.bulletProto = RegularBullet.create(this.scene, v, tv, {damage: 1, scale: {x: 0.7, y: 0.7}, frictionAir: 0, mass: 0.005})
+        this.bulletProto = StraightBullet.create(this.scene, v, tv, {
+            damage: 1,
+            scale: {x: 0.7, y: 0.7},
+            frictionAir: 0,
+            mass: 0.005
+        })
     }
 
     static create(scene, v, tv) {
@@ -109,7 +113,7 @@ export class MachineGun extends Gun {
     generateBullets(dirX, dirY) {
         const {x, y} = this.getXY()
         const spriteAngle360 = this.sprite.angle < 0 ? 360 + this.sprite.angle : this.sprite.angle
-        this.scene.spawnBullet(this.bulletProto,
+        this.scene.spawnBullet(this.bulletProto.clone(
             {
                 x: x + Math.cos((450 - (spriteAngle360 - 50)) / 180 * Math.PI) * 10,
                 y: y - Math.sin((450 - (spriteAngle360 - 50)) / 180 * Math.PI) * 10,
@@ -118,13 +122,16 @@ export class MachineGun extends Gun {
                 dirX: dirX / 2,
                 dirY: dirY / 2
             }, this.sprite.angle)
-        this.scene.spawnBullet(this.bulletProto, {
-            x: x + Math.cos((450 - (spriteAngle360 + 50)) / 180 * Math.PI) * 10,
-            y: y - Math.sin((450 - (spriteAngle360 + 50)) / 180 * Math.PI) * 10,
-        }, {
-            dirX: dirX / 2,
-            dirY: dirY / 2
-        }, this.sprite.angle)
+        )
+        this.scene.spawnBullet(this.bulletProto.clone(
+            {
+                x: x + Math.cos((450 - (spriteAngle360 + 50)) / 180 * Math.PI) * 10,
+                y: y - Math.sin((450 - (spriteAngle360 + 50)) / 180 * Math.PI) * 10,
+            }, {
+                dirX: dirX / 2,
+                dirY: dirY / 2
+            }, this.sprite.angle)
+        )
     }
 
 }
@@ -133,7 +140,12 @@ export class ShotGun extends Gun {
 
     constructor(scene, v, tv) {
         super(scene, v, tv, {coolDown: 100, sprite: 'shotgun'})
-        this.bulletProto = RegularBullet.create(this.scene, v, tv, {damage: 20, scale: {x: 2, y: 1}, frictionAir: 0.2, mass: 2})
+        this.bulletProto = StraightBullet.create(this.scene, v, tv, {
+            damage: 20,
+            scale: {x: 2, y: 1},
+            frictionAir: 0.2,
+            mass: 2
+        })
     }
 
     static create(scene, v, tv) {
@@ -147,12 +159,13 @@ export class ShotGun extends Gun {
     generateBullets(dirX, dirY) {
         const {x, y} = this.getXY()
         const spriteAngle360 = this.sprite.angle < 0 ? 360 + this.sprite.angle : this.sprite.angle
-        return range(6).map(i => this.scene.spawnBullet(this.bulletProto,
+        return range(6).map(i => this.scene.spawnBullet(this.bulletProto.clone(
             {
                 x: x + Math.cos((450 - (spriteAngle360 - ((-1) ** i) * Math.ceil(i / 2) * 15)) / 180 * Math.PI) * 50,
                 y: y - Math.sin((450 - (spriteAngle360 - ((-1) ** i) * Math.ceil(i / 2) * 15)) / 180 * Math.PI) * 50,
             },
             {dirX, dirY}, this.sprite.angle))
+        )
     }
 
 }
@@ -160,8 +173,13 @@ export class ShotGun extends Gun {
 export class SingleRocketLauncher extends Gun {
 
     constructor(scene, v, tv) {
-        super(scene, v, tv, {coolDown: 100, sprite: 'shotgun'})
-        this.bulletProto = RegularBullet.create(this.scene, v, tv, {damage: 20, scale: {x: 0.5, y: 0.5}})
+        super(scene, v, tv, {coolDown: 100, sprite: 'single_rocket'})
+        this.bulletProto = TrackingBullet.create(this.scene, v, tv, {
+            damage: 1,
+            scale: {x: 1.2, y: 1.2},
+            frictionAir: 0,
+            mass: 0.10
+        })
     }
 
     static create(scene, v, tv) {
@@ -174,10 +192,16 @@ export class SingleRocketLauncher extends Gun {
 
     generateBullets(dirX, dirY) {
         const {x, y} = this.getXY()
-        return range(5).map(i => this.scene.spawnBullet(this.bulletProto, {
-            x: x + 10 * i,
-            y: y + Math.floor(i / 3) * 5
-        }, {dirX, dirY}, this.sprite.angle))
+        const spriteAngle360 = this.sprite.angle < 0 ? 360 + this.sprite.angle : this.sprite.angle
+
+        this.scene.spawnBullet((this.bulletProto.clone(
+            {
+                x: x + Math.cos((450 - (spriteAngle360 - 50)) / 180 * Math.PI) * 10,
+                y: y - Math.sin((450 - (spriteAngle360 - 50)) / 180 * Math.PI) * 10,
+            },
+            {dirX: dirX / 10, dirY: dirY / 10},
+            this.sprite.angle) as TrackingBullet).setTarget(this.aimingAt)
+        )
     }
 
 }

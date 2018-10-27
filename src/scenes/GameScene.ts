@@ -5,9 +5,10 @@ import * as levelFile2 from '../../assets/maps/level2.json'
 import * as greenKnightImg from '../../assets/green-knight.png'
 import * as machineGunImg from '../../assets/machine_gun.png'
 import * as shotgunImg from '../../assets/shotgun.png'
+import * as singleRocketImg from '../../assets/single_rocket.png'
 import * as smallBulletImg from '../../assets/small_bullet.png'
 import Knight from '../objects/knight';
-import Gun, { MachineGun, ShotGun } from '../objects/gun';
+import Gun, { MachineGun, ShotGun, SingleRocketLauncher } from '../objects/gun';
 import { Bullet } from '../objects/Bullet';
 import { product } from '../utils/array';
 import { Enemy } from '../objects/GameObject';
@@ -20,7 +21,7 @@ import Sprite = Phaser.Physics.Matter.Sprite;
 import DynamicTilemapLayer = Phaser.Tilemaps.DynamicTilemapLayer;
 
 export enum WeaponType {
-    SHOTGUN = 'shotgun', MACHINEGUN = 'machine_gun'
+    SHOTGUN = 'shotgun', MACHINEGUN = 'machine_gun', 'SINGLE_ROCKET' = 'single_rocket'
 }
 
 export type GameTile =
@@ -60,6 +61,7 @@ export default class GameScene extends Scene {
         this.load.image('tiles', tilesetImg)
         this.load.image('machine_gun', machineGunImg)
         this.load.image('shotgun', shotgunImg)
+        this.load.image('single_rocket', singleRocketImg)
         this.load.image('small_bullet', smallBulletImg)
         // this.load.image('nr_1', nr1Img)
         // this.load.image('nr_2', nr2Img)
@@ -85,7 +87,8 @@ export default class GameScene extends Scene {
     private initGunManager(defaultSelect) {
         const machineGunProto = MachineGun.create(this, {x: 0, y: 0}, {x: 0, y: 0})
         const shotGunProto = ShotGun.create(this, {x: 0, y: 0}, {x: 0, y: 0})
-        const available = {[WeaponType.MACHINEGUN]: machineGunProto, [WeaponType.SHOTGUN]: shotGunProto}
+        const singleRocketProto = SingleRocketLauncher.create(this, {x: 0, y: 0}, {x: 0, y: 0})
+        const available = {[WeaponType.MACHINEGUN]: machineGunProto, [WeaponType.SHOTGUN]: shotGunProto, [WeaponType.SINGLE_ROCKET]: singleRocketProto}
         this.gunManager = {
             selected: available[defaultSelect.properties.weapon_type],
             selectedPrice: defaultSelect.properties.weapon_price,
@@ -147,8 +150,7 @@ export default class GameScene extends Scene {
         })
     }
 
-    spawnBullet(bulletProto, {x, y}, {dirX, dirY}, angle) {
-        const bullet = bulletProto.clone({x, y}, {dirX, dirY}, angle)
+    spawnBullet(bullet) {
         this.bullets.add(bullet)
     }
 
