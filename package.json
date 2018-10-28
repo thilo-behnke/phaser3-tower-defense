@@ -1,7 +1,7 @@
 {
-    "name": "phaser3-project-template",
-    "version": "1.0.9",
-    "description": "A Phaser 3 Project Template",
+    "name": "phaser3-tower-defense",
+    "version": "0.0.1",
+    "description": "Phaser3 Tower Defense",
     "main": "src/index.js",
     "scripts": {
         "dev": "webpack --mode development && webpack-dev-server --mode development --hot",
@@ -9,15 +9,10 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/photonstorm/phaser3-project-template.git"
+        "url": "https://github.com/thilo-behnke/phaser3-tower-defense"
     },
-    "author": "Richard Davey <rdavey@gmail.com> (http://www.photonstorm.com)",
-    "license": "MIT",
-    "licenseUrl": "http://www.opensource.org/licenses/mit-license.php",
-    "bugs": {
-        "url": "https://github.com/photonstorm/phaser3-project-template/issues"
-    },
-    "homepage": "https://github.com/photonstorm/phaser3-project-template#readme",
+    "author": "Thilo Behnke",
+    "homepage": "https://github.com/thilo-behnke/phaser3-tower-defense#readme",
     "devDependencies": {
         "expose-loader": "^0.7.5",
         "file-loader": "^2.0.0",
