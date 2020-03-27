@@ -12,13 +12,13 @@ import Gun, { MachineGun, ShotGun, SingleRocketLauncher } from '../objects/gun';
 import { Bullet } from '../objects/Bullet';
 import { product } from '../utils/array';
 import { Enemy } from '../objects/GameObject';
-import AutoRemoveList from '../objects/autoRemoveList';
 import Graphics = Phaser.GameObjects.Graphics;
 import Vector2 = Phaser.Math.Vector2;
 import Tilemap = Phaser.Tilemaps.Tilemap;
 import StaticTilemapLayer = Phaser.Tilemaps.StaticTilemapLayer;
 import Sprite = Phaser.Physics.Matter.Sprite;
 import DynamicTilemapLayer = Phaser.Tilemaps.DynamicTilemapLayer;
+import AutoRemoveList from "../objects/AutoRemoveList";
 
 export enum WeaponType {
     SHOTGUN = 'shotgun', MACHINEGUN = 'machine_gun', 'SINGLE_ROCKET' = 'single_rocket'

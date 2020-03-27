@@ -1,17 +1,12 @@
-# Phaser 3 Webpack Project Template
+# Phaser3 Tower Defense
 
-A Phaser 3 Project Template
+Tower Defense prototype written in Phaser3 with Typescript, using MatterJS as a physics system for bullet/enemy behavior.
+Enemies approach from the top, guns can be placed on designated positions and attack the enemies.
 
-### Requirements
+# Run
 
-We need [Node.js](https://nodejs.org) to install and run scripts.
+`npm install && npm run dev`
 
-## Install and run
+# Demo
 
-Run next commands in your terminal:
-
-| Command | Description |
-|---------|-------------|
-| `npm install` | Install dependencies and launch browser with examples.|
-| `npm start` | Launch browser to show the examples. <br> Press `Ctrl + c` to kill **http-server** process. |
-=======
+![](docs/demo.gif)
