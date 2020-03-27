@@ -29,7 +29,7 @@
         "@types/matter-js": "^0.10.2",
         "lodash": "^4.17.11",
         "matter-js": "^0.14.2",
-        "npm": "^6.4.1",
+        "npm": "^6.13.4",
         "phaser": "3.12.0",
         "phaser-matter-collision-plugin": "^0.10.0"
     }
