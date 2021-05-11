@@ -27,7 +27,7 @@
     "dependencies": {
         "@types/lodash": "^4.14.117",
         "@types/matter-js": "^0.10.2",
-        "lodash": "^4.17.11",
+        "lodash": "^4.17.21",
         "matter-js": "^0.14.2",
         "npm": "^6.4.1",
         "phaser": "3.12.0",
